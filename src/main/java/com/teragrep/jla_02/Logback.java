@@ -8,6 +8,7 @@ import ch.qos.logback.classic.util.ContextInitializer;
 
 import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Logback implements Runnable {
@@ -17,10 +18,12 @@ public class Logback implements Runnable {
     private static Marker LOG_METRIC = MarkerFactory.getMarker("METRIC");
     private final AtomicLong messages;
     private final CountDownLatch countDownLatch;
+    private final AtomicBoolean run;
 
-    public Logback(CountDownLatch countDownLatch, AtomicLong messages) {
+    public Logback(AtomicBoolean run, CountDownLatch countDownLatch, AtomicLong messages) {
         this.countDownLatch = countDownLatch;
         this.messages = messages;
+        this.run = run;
         System.setProperty(ContextInitializer.CONFIG_FILE_PROPERTY, "conf/logback.xml");
         logger = LoggerFactory.getLogger(Logback.class);
         LOG_AUDIT = MarkerFactory.getMarker("AUDIT");
@@ -31,18 +34,18 @@ public class Logback implements Runnable {
 
     @Override
     public void run() {
-        while (true) {
+        while (run.get()) {
             try {
                 logger.info(LOG_AUDIT, "Logback-audit says hi.");
                 logger.info(LOG_DAILY, "Logback-daily says hi.");
                 logger.info(LOG_METRIC, "Logback-metric says hi.");
                 messages.addAndGet(3);
-                countDownLatch.countDown();
             }
             catch (Exception e) {
                 e.printStackTrace();
                 System.exit(1);
             }
         }
+        countDownLatch.countDown();
     }
 }
