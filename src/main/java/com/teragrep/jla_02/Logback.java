@@ -7,15 +7,20 @@ import org.slf4j.MarkerFactory;
 import ch.qos.logback.classic.util.ContextInitializer;
 
 import java.util.TimerTask;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
-public class Logback extends TimerTask {
+public class Logback implements Runnable {
     private static Logger logger;
     private static Marker LOG_AUDIT = MarkerFactory.getMarker("AUDIT");
     private static Marker LOG_DAILY = MarkerFactory.getMarker("DAILY");
     private static Marker LOG_METRIC = MarkerFactory.getMarker("METRIC");
-    private int counter;
+    private final AtomicLong messages;
+    private final CountDownLatch countDownLatch;
 
-    public Logback() {
+    public Logback(CountDownLatch countDownLatch, AtomicLong messages) {
+        this.countDownLatch = countDownLatch;
+        this.messages = messages;
         System.setProperty(ContextInitializer.CONFIG_FILE_PROPERTY, "conf/logback.xml");
         logger = LoggerFactory.getLogger(Logback.class);
         LOG_AUDIT = MarkerFactory.getMarker("AUDIT");
@@ -26,14 +31,18 @@ public class Logback extends TimerTask {
 
     @Override
     public void run() {
-        try {
-            logger.info(LOG_AUDIT, "Logback-audit says hi.");
-            logger.info(LOG_DAILY, "Logback-daily says hi.");
-            logger.info(LOG_METRIC, "Logback-metric says hi.");
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-            System.exit(1);
+        while (true) {
+            try {
+                logger.info(LOG_AUDIT, "Logback-audit says hi.");
+                logger.info(LOG_DAILY, "Logback-daily says hi.");
+                logger.info(LOG_METRIC, "Logback-metric says hi.");
+                messages.addAndGet(3);
+                countDownLatch.countDown();
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
         }
     }
 }

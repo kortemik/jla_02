@@ -2,29 +2,32 @@ package com.teragrep.jla_02;
 
 import java.text.SimpleDateFormat;
 import java.util.Timer;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Main {
     public static void main(String[] args) {
-        final int sleep_duration = ((System.getenv("SLEEP_DURATION") == null) ? 5 : Integer.parseInt(System.getenv("SLEEP_DURATION")))*1000;
+        CountDownLatch countDownLatch = new CountDownLatch(99999);
+        AtomicLong messages = new AtomicLong();
 
-        Timer timer = new Timer();
+        ForkJoinPool.commonPool().submit(new Logback(countDownLatch, messages));
 
-        System.out.println("Sending events every " + sleep_duration + " milliseconds");
+        ForkJoinPool.commonPool().submit(new Logback(countDownLatch, messages));
 
+        ForkJoinPool.commonPool().submit(new Logback(countDownLatch, messages));
 
-        Thread Logback = new Thread(() -> {
-            System.out.println("Starting Logback");
-            timer.scheduleAtFixedRate(new Logback(), 0, sleep_duration);
-        });
-        Logback.start();
+        ForkJoinPool.commonPool().submit(new Logback(countDownLatch, messages));
 
+        ForkJoinPool.commonPool().submit(new Logback(countDownLatch, messages));
 
         try {
-            Thread.currentThread().join();
+            countDownLatch.await();
         }
-        catch (Exception e) {
-            e.printStackTrace();
-            System.exit(1);
+        catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
+
+        System.out.println("should have 99999*3 messages sent " + messages.get());
     }
 }
